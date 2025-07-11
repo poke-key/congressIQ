@@ -10,8 +10,26 @@ import {
   BookOpen,
   ArrowRight
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function Home() {
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+    } else {
+      router.push('/search')
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
   return (
     <div className="min-h-screen constitution-bg flex flex-col">
       {/* Thinner Header */}
@@ -62,6 +80,9 @@ export default function Home() {
           <div className="relative max-w-2xl mx-auto mb-8">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-600 w-6 h-6" />
             <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder="Search bills, topics, or impact on your industry..." 
               className="pl-14 h-16 text-xl ghibli-shadow bg-amber-50/90 backdrop-blur-sm border-amber-300/50 rounded-2xl text-amber-950 placeholder:text-amber-600 focus:ring-2 focus:ring-amber-600"
             />
@@ -70,6 +91,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
+              onClick={handleSearch}
               className="ghibli-shadow text-lg px-8 py-6 rounded-xl bg-amber-800 hover:bg-amber-700 text-amber-50"
             >
               Search Bills
