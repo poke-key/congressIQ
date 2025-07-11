@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Search, 
   BookOpen,
@@ -17,54 +18,133 @@ import {
   Filter,
   Clock,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 
-// Mock data for now - we'll replace this with real API data later
-const mockBills = [
-  {
-    id: "hr-1234",
-    title: "Clean Energy Innovation Act",
-    shortTitle: "H.R. 1234",
-    summary: "Establishes a comprehensive framework for clean energy innovation, including tax incentives for renewable energy projects and research grants for emerging technologies.",
-    aiSummary: "This bill could significantly impact energy companies, manufacturing, and tech sectors. Estimated $50B in new market opportunities for clean tech companies.",
-    status: "Passed House",
-    introducedDate: "2024-03-15",
-    sponsor: "Rep. Jane Smith (D-CA)",
-    impactLevel: "High",
-    sectors: ["Energy", "Technology", "Manufacturing"],
-    probability: 75
-  },
-  {
-    id: "s-567",
-    title: "Small Business Digital Infrastructure Support Act",
-    shortTitle: "S. 567",
-    summary: "Provides funding and technical assistance to help small businesses upgrade their digital infrastructure and cybersecurity capabilities.",
-    aiSummary: "Primary impact on small businesses, cybersecurity firms, and IT consultants. Could create compliance requirements for businesses with 50+ employees.",
-    status: "Committee Review",
-    introducedDate: "2024-02-28",
-    sponsor: "Sen. John Doe (R-TX)",
-    impactLevel: "Medium",
-    sectors: ["Technology", "Small Business", "Cybersecurity"],
-    probability: 45
-  },
-  {
-    id: "hr-2468",
-    title: "Healthcare Data Privacy Enhancement Act",
-    shortTitle: "H.R. 2468",
-    summary: "Strengthens privacy protections for healthcare data and establishes new requirements for healthcare providers and technology companies handling medical information.",
-    aiSummary: "Major compliance changes for healthcare providers and health tech companies. Estimated implementation costs of $10-50M for large healthcare systems.",
-    status: "Introduced",
-    introducedDate: "2024-01-12",
-    sponsor: "Rep. Sarah Johnson (D-NY)",
-    impactLevel: "High",
-    sectors: ["Healthcare", "Technology", "Privacy"],
-    probability: 60
+interface Bill {
+  id: string
+  title: string
+  shortTitle: string
+  summary: string
+  aiSummary: string
+  status: string
+  introducedDate: string
+  sponsor: string
+  impactLevel: string
+  sectors: string[]
+  probability: number
+  cosponsorsCount: number
+}
+
+interface SearchResponse {
+  bills: Bill[]
+  total: number
+  query: string
+  pagination?: {
+    count: number
+    next?: string
+    prev?: string
   }
-]
+}  
+// }-1234",
+//     title: "Clean Energy Innovation Act",
+//     shortTitle: "H.R. 1234",
+//     summary: "Establishes a comprehensive framework for clean energy innovation, including tax incentives for renewable energy projects and research grants for emerging technologies.",
+//     aiSummary: "This bill could significantly impact energy companies, manufacturing, and tech sectors. Estimated $50B in new market opportunities for clean tech companies.",
+//     status: "Passed House",
+//     introducedDate: "2024-03-15",
+//     sponsor: "Rep. Jane Smith (D-CA)",
+//     impactLevel: "High",
+//     sectors: ["Energy", "Technology", "Manufacturing"],
+//     probability: 75
+//   },
+//   {
+//     id: "s-567",
+//     title: "Small Business Digital Infrastructure Support Act",
+//     shortTitle: "S. 567",
+//     summary: "Provides funding and technical assistance to help small businesses upgrade their digital infrastructure and cybersecurity capabilities.",
+//     aiSummary: "Primary impact on small businesses, cybersecurity firms, and IT consultants. Could create compliance requirements for businesses with 50+ employees.",
+//     status: "Committee Review",
+//     introducedDate: "2024-02-28",
+//     sponsor: "Sen. John Doe (R-TX)",
+//     impactLevel: "Medium",
+//     sectors: ["Technology", "Small Business", "Cybersecurity"],
+//     probability: 45
+//   },
+//   {
+//     id: "hr-2468",
+//     title: "Healthcare Data Privacy Enhancement Act",
+//     shortTitle: "H.R. 2468",
+//     summary: "Strengthens privacy protections for healthcare data and establishes new requirements for healthcare providers and technology companies handling medical information.",
+//     aiSummary: "Major compliance changes for healthcare providers and health tech companies. Estimated implementation costs of $10-50M for large healthcare systems.",
+//     status: "Introduced",
+//     introducedDate: "2024-01-12",
+//     sponsor: "Rep. Sarah Johnson (D-NY)",
+//     impactLevel: "High",
+//     sectors: ["Healthcare", "Technology", "Privacy"],
+//     probability: 60
+//   }
+// ]
 
 export default function SearchResults() {
-  const searchQuery = "clean energy" // This would come from URL params in real implementation
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [bills, setBills] = useState<Bill[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
+
+  // Fetch bills from API
+  const fetchBills = async (query: string = '') => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const params = new URLSearchParams()
+      if (query) params.append('q', query)
+      params.append('limit', '20')
+      
+      const response = await fetch(`/api/bills/search?${params}`)
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+      
+      const data: SearchResponse = await response.json()
+      setBills(data.bills)
+      setTotal(data.total)
+    } catch (err) {
+      console.error('Failed to fetch bills:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch bills')
+      setBills([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch bills on component mount and when search params change
+  useEffect(() => {
+    const query = searchParams.get('q') || ''
+    setSearchQuery(query)
+    fetchBills(query)
+  }, [searchParams])
+
+  const handleSearch = () => {
+    const query = searchQuery.trim()
+    if (query !== (searchParams.get('q') || '')) {
+      router.push(`/search?q=${encodeURIComponent(query)}`)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,7 +182,9 @@ export default function SearchResults() {
               <div className="relative flex-1 max-w-2xl">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-600 w-5 h-5" />
                 <Input 
-                  defaultValue={searchQuery}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
                   placeholder="Search bills, topics, or impact on your industry..." 
                   className="pl-10 h-10 ghibli-shadow bg-amber-50/90 backdrop-blur-sm border-amber-300/50 rounded-xl text-amber-950 placeholder:text-amber-600"
                 />
@@ -181,95 +263,211 @@ export default function SearchResults() {
             {/* Results Header */}
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-amber-950 mb-2">
-                Search Results for "{searchQuery}"
+                {searchQuery ? `Search Results for "${searchQuery}"` : 'Recent Bills'}
               </h1>
-              <p className="text-amber-700">Found {mockBills.length} bills matching your search</p>
+              {loading ? (
+                <Skeleton className="h-4 w-48 bg-amber-200" />
+              ) : error ? (
+                <p className="text-red-600">Error: {error}</p>
+              ) : (
+                <p className="text-amber-700">Found {total} bills {searchQuery ? 'matching your search' : ''}</p>
+              )}
             </div>
 
+            {/* Loading State */}
+            {loading && (
+              <div className="space-y-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="ghibli-shadow bg-amber-50/80 border-amber-200/50">
+                    <CardHeader className="pb-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex space-x-3">
+                          <Skeleton className="h-6 w-16 bg-amber-200" />
+                          <Skeleton className="h-6 w-24 bg-amber-200" />
+                          <Skeleton className="h-6 w-20 bg-amber-200" />
+                        </div>
+                        <Skeleton className="h-6 w-32 bg-amber-200" />
+                      </div>
+                      <Skeleton className="h-8 w-3/4 bg-amber-200" />
+                      <div className="flex space-x-4">
+                        <Skeleton className="h-4 w-48 bg-amber-200" />
+                        <Skeleton className="h-4 w-32 bg-amber-200" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-20 w-full bg-amber-200 mb-4" />
+                      <Skeleton className="h-16 w-full bg-amber-200" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+              <Card className="ghibli-shadow bg-red-50 border-red-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-2 text-red-800">
+                    <AlertCircle className="w-5 h-5" />
+                    <p>Failed to load bills. Please try again.</p>
+                  </div>
+                  <Button 
+                    onClick={() => fetchBills(searchQuery)} 
+                    className="mt-4 bg-red-600 hover:bg-red-700"
+                  >
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* No Results */}
+            {!loading && !error && bills.length === 0 && (
+              <Card className="ghibli-shadow bg-amber-50/80 border-amber-200/50">
+                <CardContent className="pt-6 text-center">
+                  <FileText className="w-12 h-12 mx-auto text-amber-600 mb-4" />
+                  <h3 className="text-lg font-semibold text-amber-950 mb-2">No Bills Found</h3>
+                  <p className="text-amber-700 mb-4">
+                    {searchQuery 
+                      ? `No bills found matching "${searchQuery}". Try a different search term.`
+                      : 'No recent bills available at the moment.'
+                    }
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      setSearchQuery('')
+                      router.push('/search')
+                    }}
+                    variant="outline"
+                    className="border-amber-400/50 text-amber-800 hover:bg-amber-200/50"
+                  >
+                    Clear Search
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Results List */}
-            <div className="space-y-6">
-              {mockBills.map((bill) => (
-                <Card key={bill.id} className="ghibli-shadow bg-amber-50/80 border-amber-200/50 hover:bg-amber-100/80 transition-all duration-300 cursor-pointer">
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="outline" className="text-xs font-mono text-amber-800 border-amber-400">
-                          {bill.shortTitle}
-                        </Badge>
-                        <Badge className={`text-xs ${getStatusColor(bill.status)}`}>
-                          {bill.status}
-                        </Badge>
-                        <Badge className={`text-xs ${getImpactColor(bill.impactLevel)}`}>
-                          {bill.impactLevel} Impact
-                        </Badge>
-                      </div>
-                      <div className="flex items-center text-amber-700 text-sm">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        {bill.probability}% passage probability
-                      </div>
-                    </div>
-                    
-                    <CardTitle className="text-xl text-amber-950 hover:text-amber-800 transition-colors">
-                      {bill.title}
-                    </CardTitle>
-                    
-                    <div className="flex items-center space-x-4 text-sm text-amber-700">
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-1" />
-                        {bill.sponsor}
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {new Date(bill.introducedDate).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
-                        <FileText className="w-4 h-4 mr-2" />
-                        Bill Summary
-                      </h4>
-                      <p className="text-amber-800 leading-relaxed">{bill.summary}</p>
-                    </div>
-                    
-                    <div className="bg-amber-100/60 p-4 rounded-lg border border-amber-200/50">
-                      <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        AI Business Impact Analysis
-                      </h4>
-                      <p className="text-amber-800 leading-relaxed">{bill.aiSummary}</p>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-amber-700">Affected Sectors:</span>
-                        <div className="flex space-x-1">
-                          {bill.sectors.map((sector) => (
-                            <Badge key={sector} variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
-                              {sector}
-                            </Badge>
-                          ))}
+            {!loading && !error && bills.length > 0 && (
+              <div className="space-y-6">
+                {bills.map((bill) => (
+                  <Card key={bill.id} className="ghibli-shadow bg-amber-50/80 border-amber-200/50 hover:bg-amber-100/80 transition-all duration-300 cursor-pointer">
+                    <CardHeader className="pb-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center space-x-3">
+                          <Badge variant="outline" className="text-xs font-mono text-amber-800 border-amber-400">
+                            {bill.shortTitle}
+                          </Badge>
+                          <Badge className={`text-xs ${getStatusColor(bill.status)}`}>
+                            {bill.status}
+                          </Badge>
+                          <Badge className={`text-xs ${getImpactColor(bill.impactLevel)}`}>
+                            {bill.impactLevel} Impact
+                          </Badge>
+                        </div>
+                        <div className="flex items-center text-amber-700 text-sm">
+                          <TrendingUp className="w-4 h-4 mr-1" />
+                          {bill.probability}% passage probability
                         </div>
                       </div>
                       
-                      <Button variant="outline" size="sm" className="ghibli-shadow border-amber-400/50 text-amber-800 hover:bg-amber-200/50">
-                        View Details
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <CardTitle className="text-xl text-amber-950 hover:text-amber-800 transition-colors">
+                        {bill.title}
+                      </CardTitle>
+                      
+                      <div className="flex items-center space-x-4 text-sm text-amber-700">
+                        <div className="flex items-center">
+                          <Users className="w-4 h-4 mr-1" />
+                          {bill.sponsor}
+                        </div>
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          {new Date(bill.introducedDate).toLocaleDateString()}
+                        </div>
+                        {bill.cosponsorsCount > 0 && (
+                          <div className="flex items-center">
+                            <Building className="w-4 h-4 mr-1" />
+                            {bill.cosponsorsCount} cosponsors
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
+                          <FileText className="w-4 h-4 mr-2" />
+                          Bill Summary
+                        </h4>
+                        <p className="text-amber-800 leading-relaxed">
+                          {bill.summary.length > 300 ? `${bill.summary.slice(0, 300)}...` : bill.summary}
+                        </p>
+                      </div>
+                      
+                      <div className="bg-amber-100/60 p-4 rounded-lg border border-amber-200/50">
+                        <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          AI Business Impact Analysis
+                        </h4>
+                        <p className="text-amber-800 leading-relaxed">
+                          {bill.aiSummary.length > 200 ? `${bill.aiSummary.slice(0, 200)}...` : bill.aiSummary}
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-amber-700">Affected Sectors:</span>
+                          <div className="flex space-x-1">
+                            {bill.sectors.slice(0, 3).map((sector) => (
+                              <Badge key={sector} variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
+                                {sector}
+                              </Badge>
+                            ))}
+                            {bill.sectors.length > 3 && (
+                              <Badge variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
+                                +{bill.sectors.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="ghibli-shadow border-amber-400/50 text-amber-800 hover:bg-amber-200/50"
+                          onClick={() => router.push(`/bill/${bill.id}`)}
+                        >
+                          View Details
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {/* Load More */}
-            <div className="text-center mt-8">
-              <Button className="ghibli-shadow bg-amber-800 hover:bg-amber-700 text-amber-50">
-                Load More Results
-              </Button>
-            </div>
+            {!loading && !error && bills.length > 0 && bills.length < total && (
+              <div className="text-center mt-8">
+                <Button 
+                  className="ghibli-shadow bg-amber-800 hover:bg-amber-700 text-amber-50"
+                  onClick={() => {
+                    // TODO: Implement pagination
+                    console.log('Load more results')
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More Results'
+                  )}
+                </Button>
+              </div>
+            )}
           </main>
         </div>
       </div>
