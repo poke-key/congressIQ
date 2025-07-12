@@ -138,7 +138,7 @@ export default function SearchResults() {
           <nav className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 bg-amber-800 rounded-lg flex items-center justify-center ghibli-shadow">
+                <div className="w-7 h-7 bg-amber-800 rounded-lg flex items-center justify-center ghibli-shadow cursor-pointer" onClick={() => router.push('/')}>
                   <BookOpen className="w-4 h-4 text-amber-50" />
                 </div>
                 <span className="text-lg font-bold text-amber-950">CongressIQ</span>
