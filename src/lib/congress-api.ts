@@ -126,12 +126,12 @@ export interface Bill {
       return this.makeRequest<CongressApiResponse<Bill>>(endpoint)
     }
   
-    async getBillText(congress: number, billType: string, billNumber: string): Promise<any> {
+        async getBillText(congress: number, billType: string, billNumber: string): Promise<{ textVersions?: Array<{ date: string, formats: Array<{ type: string, url: string }> }> }> {
       const endpoint = `/bill/${congress}/${billType}/${billNumber}/text`
       return this.makeRequest(endpoint)
     }
-  
-    async getBillSummary(congress: number, billType: string, billNumber: string): Promise<any> {
+
+    async getBillSummary(congress: number, billType: string, billNumber: string): Promise<{ summaries?: Array<{ updateDate: string, text: string }> }> {
       const endpoint = `/bill/${congress}/${billType}/${billNumber}/summaries`
       return this.makeRequest(endpoint)
     }

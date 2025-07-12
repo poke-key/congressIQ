@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const congress = searchParams.get('congress') ? parseInt(searchParams.get('congress')!) : undefined
     const chamber = searchParams.get('chamber') as 'house' | 'senate' | undefined
-    const billType = searchParams.get('billType') as any
-    const sort = searchParams.get('sort') as any || 'updateDate'
+    const billType = searchParams.get('billType') as 'hr' | 's' | 'hjres' | 'sjres' | 'hconres' | 'sconres' | 'hres' | 'sres' | undefined
+    const sort = searchParams.get('sort') as 'latestAction' | 'introducedDate' | 'updateDate' | undefined || 'updateDate'
 
     console.log('Search request:', { query, limit, offset, congress, chamber, billType, sort })
     console.log('Congress parameter:', congress, 'Type:', typeof congress)
@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to extract sectors from bill subjects
-function extractSectors(bill: any): string[] {
-  const subjects = bill.subjects?.legislativeSubjects?.map((s: any) => s.name) || []
+function extractSectors(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string }): string[] {
+  const subjects = bill.subjects?.legislativeSubjects?.map((s) => s.name) || []
   const sectorMap: Record<string, string[]> = {
     'Technology': ['science', 'technology', 'internet', 'telecommunications', 'cybersecurity', 'artificial intelligence', 'data'],
     'Healthcare': ['health', 'medical', 'medicare', 'medicaid', 'hospital', 'pharmaceutical', 'drug'],
@@ -113,7 +113,7 @@ function extractSectors(bill: any): string[] {
 }
 
 // Helper function to estimate passage probability
-function estimatePassageProbability(bill: any, status: string): number {
+function estimatePassageProbability(bill: { cosponsors?: { count: number }, originChamber?: string }, status: string): number {
   let baseProb = 15 // Base probability for introduced bills
 
   // Adjust based on status
@@ -141,7 +141,7 @@ function estimatePassageProbability(bill: any, status: string): number {
 }
 
 // Placeholder AI summary generator (we'll replace this with real LLM later)
-function generatePlaceholderAISummary(bill: any): string {
+function generatePlaceholderAISummary(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string, cosponsors?: { count: number } }): string {
   const sectors = extractSectors(bill)
   const cosponsors = bill.cosponsors?.count || 0
   

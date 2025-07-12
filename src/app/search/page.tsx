@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { 
@@ -16,13 +16,12 @@ import {
   Building,
   ChevronRight,
   Filter,
-  Clock,
   FileText,
   AlertCircle,
   Loader2
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 interface Bill {
   id: string
@@ -48,46 +47,7 @@ interface SearchResponse {
     next?: string
     prev?: string
   }
-}  
-// }-1234",
-//     title: "Clean Energy Innovation Act",
-//     shortTitle: "H.R. 1234",
-//     summary: "Establishes a comprehensive framework for clean energy innovation, including tax incentives for renewable energy projects and research grants for emerging technologies.",
-//     aiSummary: "This bill could significantly impact energy companies, manufacturing, and tech sectors. Estimated $50B in new market opportunities for clean tech companies.",
-//     status: "Passed House",
-//     introducedDate: "2024-03-15",
-//     sponsor: "Rep. Jane Smith (D-CA)",
-//     impactLevel: "High",
-//     sectors: ["Energy", "Technology", "Manufacturing"],
-//     probability: 75
-//   },
-//   {
-//     id: "s-567",
-//     title: "Small Business Digital Infrastructure Support Act",
-//     shortTitle: "S. 567",
-//     summary: "Provides funding and technical assistance to help small businesses upgrade their digital infrastructure and cybersecurity capabilities.",
-//     aiSummary: "Primary impact on small businesses, cybersecurity firms, and IT consultants. Could create compliance requirements for businesses with 50+ employees.",
-//     status: "Committee Review",
-//     introducedDate: "2024-02-28",
-//     sponsor: "Sen. John Doe (R-TX)",
-//     impactLevel: "Medium",
-//     sectors: ["Technology", "Small Business", "Cybersecurity"],
-//     probability: 45
-//   },
-//   {
-//     id: "hr-2468",
-//     title: "Healthcare Data Privacy Enhancement Act",
-//     shortTitle: "H.R. 2468",
-//     summary: "Strengthens privacy protections for healthcare data and establishes new requirements for healthcare providers and technology companies handling medical information.",
-//     aiSummary: "Major compliance changes for healthcare providers and health tech companies. Estimated implementation costs of $10-50M for large healthcare systems.",
-//     status: "Introduced",
-//     introducedDate: "2024-01-12",
-//     sponsor: "Rep. Sarah Johnson (D-NY)",
-//     impactLevel: "High",
-//     sectors: ["Healthcare", "Technology", "Privacy"],
-//     probability: 60
-//   }
-// ]
+}
 
 export default function SearchResults() {
   const searchParams = useSearchParams()
@@ -100,7 +60,7 @@ export default function SearchResults() {
   const [selectedCongress, setSelectedCongress] = useState('119')
 
   // Fetch bills from API
-  const fetchBills = async (query: string = '', congressOverride?: string) => {
+  const fetchBills = useCallback(async (query: string = '', congressOverride?: string) => {
     setLoading(true)
     setError(null)
     
@@ -126,14 +86,14 @@ export default function SearchResults() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedCongress])
 
   // Fetch bills on component mount and when search params or selectedCongress change
   useEffect(() => {
     const query = searchParams.get('q') || ''
     setSearchQuery(query)
     fetchBills(query)
-  }, [searchParams, selectedCongress])
+  }, [searchParams, selectedCongress, fetchBills])
 
   const handleSearch = () => {
     const query = searchQuery.trim()

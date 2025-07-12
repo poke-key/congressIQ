@@ -40,7 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const summaries = summaryResponse.value.summaries
       // Get the most recent summary
       const latestSummary = summaries
-        .sort((a: any, b: any) => new Date(b.updateDate).getTime() - new Date(a.updateDate).getTime())[0]
+        .sort((a: { updateDate: string }, b: { updateDate: string }) => new Date(b.updateDate).getTime() - new Date(a.updateDate).getTime())[0]
       
       if (latestSummary?.text) {
         officialSummary = latestSummary.text
@@ -53,12 +53,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const textVersions = textResponse.value.textVersions
       // Get the most recent text version
       const latestText = textVersions
-        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+        .sort((a: { date: string }, b: { date: string }) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
       
       if (latestText?.formats) {
         // Try to get text format, fallback to XML or PDF
-        const textFormat = latestText.formats.find((f: any) => f.type === 'Formatted Text') || 
-                          latestText.formats.find((f: any) => f.type === 'Formatted XML') ||
+        const textFormat = latestText.formats.find((f: { type: string }) => f.type === 'Formatted Text') || 
+                          latestText.formats.find((f: { type: string }) => f.type === 'Formatted XML') ||
                           latestText.formats[0]
         
         if (textFormat?.url) {
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       number: bill.number,
       originChamber: bill.originChamber,
       latestAction: bill.latestAction,
-      subjects: bill.subjects?.legislativeSubjects || [],
+      subjects: bill.subjects?.legislativeSubjects?.map((s: { name: string }) => s.name) || [],
       textVersions: bill.textVersions || [],
       relatedBills: [], // We can add this later
       amendments: [], // We can add this later
@@ -124,8 +124,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // Helper functions (same as in search route, but we'll extract these to utils later)
-function extractSectors(bill: any): string[] {
-  const subjects = bill.subjects?.legislativeSubjects?.map((s: any) => s.name) || []
+function extractSectors(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string }): string[] {
+  const subjects = bill.subjects?.legislativeSubjects?.map((s) => s.name) || []
   const sectorMap: Record<string, string[]> = {
     'Technology': ['science', 'technology', 'internet', 'telecommunications', 'cybersecurity', 'artificial intelligence', 'data'],
     'Healthcare': ['health', 'medical', 'medicare', 'medicaid', 'hospital', 'pharmaceutical', 'drug'],
@@ -151,7 +151,7 @@ function extractSectors(bill: any): string[] {
   return detectedSectors.length > 0 ? detectedSectors : ['General']
 }
 
-function estimatePassageProbability(bill: any, status: string): number {
+function estimatePassageProbability(bill: { cosponsors?: { count: number }, originChamber?: string }, status: string): number {
   let baseProb = 15
 
   switch (status) {
@@ -175,10 +175,10 @@ function estimatePassageProbability(bill: any, status: string): number {
   return Math.min(95, Math.max(5, baseProb))
 }
 
-function generateDetailedAISummary(bill: any, officialSummary: string): string {
+function generateDetailedAISummary(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string, cosponsors?: { count: number } }, officialSummary: string): string {
   const sectors = extractSectors(bill)
   const cosponsors = bill.cosponsors?.count || 0
-  const subjects = bill.subjects?.legislativeSubjects?.map((s: any) => s.name) || []
+  const subjects = bill.subjects?.legislativeSubjects?.map((s) => s.name) || []
   
   let summary = `**Business Impact Analysis:**\n\n`
   
@@ -222,7 +222,7 @@ function generateDetailedAISummary(bill: any, officialSummary: string): string {
   return summary
 }
 
-function getRecommendation(bill: any, sectors: string[], cosponsors: number): string {
+function getRecommendation(bill: { cosponsors?: { count: number } }, sectors: string[], cosponsors: number): string {
   if (cosponsors > 50 && sectors.length > 2) {
     return 'High priority monitoring recommended. Begin preliminary compliance assessment and stakeholder engagement.'
   } else if (cosponsors > 20) {
