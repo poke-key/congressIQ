@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     console.log('Search request:', { query, limit, offset, congress, chamber, billType, sort })
     console.log('Congress parameter:', congress, 'Type:', typeof congress)
 
+    // Use API pagination only, no client-side filtering
     const response = await congressApi.searchBills(query, {
       limit,
       offset,
@@ -23,26 +24,9 @@ export async function GET(request: NextRequest) {
       chamber,
       billType,
       sort
-    })
-
-    // Debug: print first 5 bills returned by the API before filtering
-    if (response.bills && response.bills.length > 0) {
-      console.log('First 5 bills from API:', response.bills.slice(0, 5).map(bill => ({
-        congress: bill.congress,
-        title: bill.title
-      })))
-    } else {
-      console.log('No bills returned from API at all.')
-    }
-
-    // Filter bills by congress if specified (in case API ignores it)
-    let filteredBills = response.bills || [];
-    if (congress) {
-      filteredBills = filteredBills.filter(bill => bill.congress === congress);
-    }
-
-    // Transform the data to match our frontend expectations
-    const transformedBills = filteredBills.map(bill => {
+    });
+    const bills = response.bills || [];
+    const transformedBills = bills.map(bill => {
       const sponsor = bill.sponsors?.[0]
       const status = getBillStatus(bill)
       const impactLevel = estimateImpactLevel(bill)

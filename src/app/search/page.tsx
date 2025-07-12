@@ -36,6 +36,9 @@ interface Bill {
   sectors: string[]
   probability: number
   cosponsorsCount: number
+  congress: string
+  type: string
+  number: string
 }
 
 interface SearchResponse {
@@ -58,17 +61,20 @@ export default function SearchResults() {
   const [error, setError] = useState<string | null>(null)
   const [total, setTotal] = useState(0)
   const [selectedCongress, setSelectedCongress] = useState('119')
+  const [offset, setOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Fetch bills from API
-  const fetchBills = useCallback(async (query: string = '', congressOverride?: string) => {
-    setLoading(true)
-    setError(null)
+  const fetchBills = useCallback(async (query: string = '', congressOverride?: string, offsetOverride?: number, append: boolean = false) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+    setError(null);
     
     try {
       const params = new URLSearchParams()
       if (query) params.append('q', query)
       params.append('limit', '20')
       params.append('congress', congressOverride || selectedCongress)
+      if (offsetOverride) params.append('offset', offsetOverride.toString());
       
       const response = await fetch(`/api/bills/search?${params}`)
       
@@ -77,14 +83,18 @@ export default function SearchResults() {
       }
       
       const data: SearchResponse = await response.json()
-      setBills(data.bills)
+      if (append) {
+        setBills(prev => [...prev, ...data.bills]);
+      } else {
+        setBills(data.bills);
+      }
       setTotal(data.total)
     } catch (err) {
       console.error('Failed to fetch bills:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch bills')
-      setBills([])
+      if (!append) setBills([])
     } finally {
-      setLoading(false)
+      if (append) setLoadingMore(false); else setLoading(false);
     }
   }, [selectedCongress])
 
@@ -92,7 +102,8 @@ export default function SearchResults() {
   useEffect(() => {
     const query = searchParams.get('q') || ''
     setSearchQuery(query)
-    fetchBills(query)
+    setOffset(0);
+    fetchBills(query, undefined, 0, false)
   }, [searchParams, selectedCongress, fetchBills])
 
   const handleSearch = () => {
@@ -431,7 +442,7 @@ export default function SearchResults() {
                           variant="outline" 
                           size="sm" 
                           className="ghibli-shadow border-amber-400/50 text-amber-800 hover:bg-amber-200/50"
-                          onClick={() => router.push(`/bill/${bill.id}`)}
+                          onClick={() => router.push(`/bill/${bill.congress}/${bill.type}/${bill.number}`)}
                         >
                           View Details
                           <ChevronRight className="w-4 h-4 ml-1" />
@@ -448,12 +459,14 @@ export default function SearchResults() {
               <div className="text-center mt-8">
                 <Button 
                   className="ghibli-shadow bg-amber-800 hover:bg-amber-700 text-amber-50"
+                  disabled={loadingMore}
                   onClick={() => {
-                    // TODO: Implement pagination
-                    console.log('Load more results')
+                    const newOffset = offset + bills.length;
+                    setOffset(newOffset);
+                    fetchBills(searchQuery, undefined, newOffset, true);
                   }}
                 >
-                  {loading ? (
+                  {loadingMore ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Loading...
