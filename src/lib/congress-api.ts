@@ -72,6 +72,7 @@ export interface Bill {
   
       try {
         console.log('Fetching from Congress API:', url.toString())
+      console.log('Search parameters:', params)
         
         const response = await fetch(url.toString(), {
           headers: {
@@ -101,22 +102,23 @@ export interface Bill {
       sort?: 'latestAction' | 'introducedDate' | 'updateDate'
       billType?: 'hr' | 's' | 'hjres' | 'sjres' | 'hconres' | 'sconres' | 'hres' | 'sres'
     } = {}): Promise<CongressApiResponse<Bill>> {
+      let endpoint = '/bill';
+      if (options.congress) {
+        endpoint += `/${options.congress}`;
+      }
       const params: Record<string, string> = {}
-      
       // Add search query
       if (query) {
         params.q = query
       }
-      
       // Add options
       if (options.limit) params.limit = options.limit.toString()
       if (options.offset) params.offset = options.offset.toString()
-      if (options.congress) params.congress = options.congress.toString()
       if (options.chamber) params.chamber = options.chamber
       if (options.sort) params.sort = options.sort
       if (options.billType) params.billType = options.billType
-  
-      return this.makeRequest<CongressApiResponse<Bill>>('/bill', params)
+      // congress is now in the path, not params
+      return this.makeRequest<CongressApiResponse<Bill>>(endpoint, params)
     }
   
     async getBill(congress: number, billType: string, billNumber: string): Promise<CongressApiResponse<Bill>> {

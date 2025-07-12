@@ -97,9 +97,10 @@ export default function SearchResults() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [total, setTotal] = useState(0)
+  const [selectedCongress, setSelectedCongress] = useState('119')
 
   // Fetch bills from API
-  const fetchBills = async (query: string = '') => {
+  const fetchBills = async (query: string = '', congressOverride?: string) => {
     setLoading(true)
     setError(null)
     
@@ -107,6 +108,7 @@ export default function SearchResults() {
       const params = new URLSearchParams()
       if (query) params.append('q', query)
       params.append('limit', '20')
+      params.append('congress', congressOverride || selectedCongress)
       
       const response = await fetch(`/api/bills/search?${params}`)
       
@@ -126,12 +128,12 @@ export default function SearchResults() {
     }
   }
 
-  // Fetch bills on component mount and when search params change
+  // Fetch bills on component mount and when search params or selectedCongress change
   useEffect(() => {
     const query = searchParams.get('q') || ''
     setSearchQuery(query)
     fetchBills(query)
-  }, [searchParams])
+  }, [searchParams, selectedCongress])
 
   const handleSearch = () => {
     const query = searchQuery.trim()
@@ -144,6 +146,10 @@ export default function SearchResults() {
     if (e.key === 'Enter') {
       handleSearch()
     }
+  }
+
+  const handleCongressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedCongress(e.target.value)
   }
 
   const getStatusColor = (status: string) => {
@@ -243,6 +249,33 @@ export default function SearchResults() {
 
                 <Separator className="bg-amber-200" />
 
+                {/* Congress Filter */}
+                <div>
+                  <label className="text-sm font-medium text-amber-900 mb-2 block">Congress</label>
+                  <div className="space-y-2">
+                    {[
+                      { label: '119th (Current)', value: '119' },
+                      { label: '118th', value: '118' },
+                      { label: '117th', value: '117' },
+                      { label: '116th', value: '116' },
+                    ].map((cong) => (
+                      <label key={cong.value} className="flex items-center space-x-2 text-sm text-amber-800">
+                        <input
+                          type="radio"
+                          name="congress"
+                          value={cong.value}
+                          checked={selectedCongress === cong.value}
+                          onChange={handleCongressChange}
+                          className="rounded border-amber-300"
+                        />
+                        <span>{cong.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator className="bg-amber-200" />
+
                 <div>
                   <label className="text-sm font-medium text-amber-900 mb-2 block">Sectors</label>
                   <div className="space-y-2">
@@ -270,7 +303,10 @@ export default function SearchResults() {
               ) : error ? (
                 <p className="text-red-600">Error: {error}</p>
               ) : (
-                <p className="text-amber-700">Found {total} bills {searchQuery ? 'matching your search' : ''}</p>
+                <div className="text-amber-700">
+                  <p>Found {total} bills {searchQuery ? 'matching your search' : ''} in the {selectedCongress}th Congress</p>
+                  <p className="text-sm text-amber-600 mt-1">Showing bills from the current Congress (2025-2027)</p>
+                </div>
               )}
             </div>
 
