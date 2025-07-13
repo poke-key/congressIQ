@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function BillDetailPage() {
   const router = useRouter();
@@ -12,6 +12,9 @@ export default function BillDetailPage() {
   const [bill, setBill] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchBill() {
@@ -30,6 +33,31 @@ export default function BillDetailPage() {
     }
     if (congress && type && number) fetchBill();
   }, [congress, type, number]);
+
+  useEffect(() => {
+    async function fetchTranslation(summary: string) {
+      setTranslating(true);
+      setTranslationError(null);
+      setTranslation(null);
+      try {
+        const res = await fetch('/api/translate-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ summary })
+        });
+        if (!res.ok) throw new Error('Failed to translate summary');
+        const data = await res.json();
+        setTranslation(data.translation);
+      } catch (err: any) {
+        setTranslationError(err.message || 'Failed to translate summary');
+      } finally {
+        setTranslating(false);
+      }
+    }
+    if (bill && bill.summary) {
+      fetchTranslation(bill.summary);
+    }
+  }, [bill]);
 
   if (loading) {
     return <Skeleton className="h-32 w-full bg-amber-200" />;
@@ -61,10 +89,15 @@ export default function BillDetailPage() {
           </div>
           <div className="mb-6">
             <h3 className="font-semibold text-amber-900 mb-2">Plain English Legal Translation</h3>
-            <p className="text-amber-700 leading-relaxed italic">
-              {/* Placeholder: In the future, this will use AI to translate legal jargon into plain English. */}
-              This section will provide a plain English explanation of the bill's legal language, making it easy to understand for everyone.
-            </p>
+            {translating ? (
+              <div className="flex items-center text-amber-700 italic"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Translating...</div>
+            ) : translationError ? (
+              <div className="text-red-700 italic">{translationError}</div>
+            ) : translation ? (
+              <p className="text-amber-700 leading-relaxed italic">{translation}</p>
+            ) : (
+              <p className="text-amber-700 italic">No translation available.</p>
+            )}
           </div>
         </CardContent>
       </Card>
