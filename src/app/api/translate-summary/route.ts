@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openrouter/auto',
+        model: 'deepseek/deepseek-chat-v3-0324:free',
         messages: [
           { role: 'system', content: 'You are an expert at translating legal and government text into plain English.' },
           { role: 'user', content: prompt }
