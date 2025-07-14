@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { congressApi, getBillStatus, estimateImpactLevel } from '@/lib/congress-api'
 
-interface RouteParams {
-  params: {
-    congress: string
-    type: string
-    number: string
-  }
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ congress: string; type: string; number: string }> }
+) {
+  const { congress, type, number } = await context.params;
   try {
-    const { congress, type, number } = params
     const congressNum = parseInt(congress)
 
     console.log('Fetching bill details:', { congress: congressNum, type, number })
@@ -35,7 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     ])
 
     // Process summaries
-    let officialSummary = bill.title
+    let summary = bill.title
     if (summaryResponse.status === 'fulfilled' && summaryResponse.value?.summaries) {
       const summaries = summaryResponse.value.summaries
       // Get the most recent summary
@@ -43,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .sort((a: { updateDate: string }, b: { updateDate: string }) => new Date(b.updateDate).getTime() - new Date(a.updateDate).getTime())[0]
       
       if (latestSummary?.text) {
-        officialSummary = latestSummary.text
+        summary = latestSummary.text
       }
     }
 
@@ -81,9 +76,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       id: `${bill.type}${bill.number}-${bill.congress}`,
       title: bill.title,
       shortTitle: `${bill.type.toUpperCase()}. ${bill.number}`,
-      summary: officialSummary,
+      summary,
       fullText: fullText.slice(0, 10000), // Limit text size for now
-      aiSummary: generateDetailedAISummary(bill, officialSummary),
+      aiSummary: generateDetailedAISummary(bill),
       status,
       introducedDate: bill.introducedDate,
       sponsor: sponsor ? {
@@ -175,51 +170,49 @@ function estimatePassageProbability(bill: { cosponsors?: { count: number }, orig
   return Math.min(95, Math.max(5, baseProb))
 }
 
-function generateDetailedAISummary(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string, cosponsors?: { count: number } }, officialSummary: string): string {
+function generateDetailedAISummary(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string, cosponsors?: { count: number } }): string {
   const sectors = extractSectors(bill)
   const cosponsors = bill.cosponsors?.count || 0
-  const subjects = bill.subjects?.legislativeSubjects?.map((s) => s.name) || []
-  
-  let summary = `**Business Impact Analysis:**\n\n`
+  let aiSummary = `**Business Impact Analysis:**\n\n`
   
   // Sector impact
-  summary += `**Affected Sectors:** ${sectors.join(', ')}\n\n`
+  aiSummary += `**Affected Sectors:** ${sectors.join(', ')}\n\n`
   
   // Political analysis
   if (cosponsors > 100) {
-    summary += `**Political Momentum:** Very High - This bill has exceptional bipartisan support with ${cosponsors} cosponsors, indicating strong likelihood of advancement.\n\n`
+    aiSummary += `**Political Momentum:** Very High - This bill has exceptional bipartisan support with ${cosponsors} cosponsors, indicating strong likelihood of advancement.\n\n`
   } else if (cosponsors > 50) {
-    summary += `**Political Momentum:** High - With ${cosponsors} cosponsors, this bill has significant support and good chances of passage.\n\n`
+    aiSummary += `**Political Momentum:** High - With ${cosponsors} cosponsors, this bill has significant support and good chances of passage.\n\n`
   } else if (cosponsors > 20) {
-    summary += `**Political Momentum:** Moderate - ${cosponsors} cosponsors suggest decent support, but may face challenges.\n\n`
+    aiSummary += `**Political Momentum:** Moderate - ${cosponsors} cosponsors suggest decent support, but may face challenges.\n\n`
   } else {
-    summary += `**Political Momentum:** Low - With only ${cosponsors} cosponsors, this bill currently lacks broad support.\n\n`
+    aiSummary += `**Political Momentum:** Low - With only ${cosponsors} cosponsors, this bill currently lacks broad support.\n\n`
   }
   
   // Compliance implications
-  summary += `**Compliance Considerations:**\n`
+  aiSummary += `**Compliance Considerations:**\n`
   if (sectors.includes('Healthcare')) {
-    summary += `• Healthcare organizations should prepare for potential new regulatory requirements\n`
-    summary += `• Health tech companies may need to update privacy and security practices\n`
+    aiSummary += `• Healthcare organizations should prepare for potential new regulatory requirements\n`
+    aiSummary += `• Health tech companies may need to update privacy and security practices\n`
   }
   if (sectors.includes('Technology')) {
-    summary += `• Tech companies should monitor for new data protection or AI governance requirements\n`
-    summary += `• Software providers may need to implement new compliance features\n`
+    aiSummary += `• Tech companies should monitor for new data protection or AI governance requirements\n`
+    aiSummary += `• Software providers may need to implement new compliance features\n`
   }
   if (sectors.includes('Finance')) {
-    summary += `• Financial institutions should assess impact on reporting and operational requirements\n`
-    summary += `• Fintech companies may face new regulatory oversight\n`
+    aiSummary += `• Financial institutions should assess impact on reporting and operational requirements\n`
+    aiSummary += `• Fintech companies may face new regulatory oversight\n`
   }
   if (sectors.includes('Energy')) {
-    summary += `• Energy companies should evaluate environmental compliance and reporting changes\n`
-    summary += `• Renewable energy firms may benefit from new incentives or requirements\n`
+    aiSummary += `• Energy companies should evaluate environmental compliance and reporting changes\n`
+    aiSummary += `• Renewable energy firms may benefit from new incentives or requirements\n`
   }
   
-  summary += `\n**Economic Impact:** Preliminary analysis suggests this legislation could affect market dynamics in ${sectors.join(', ')} sectors. Full financial modeling will be available once final bill text is processed.\n\n`
+  aiSummary += `\n**Economic Impact:** Preliminary analysis suggests this legislation could affect market dynamics in ${sectors.join(', ')} sectors. Full financial modeling will be available once final bill text is processed.\n\n`
   
-  summary += `**Recommendation:** ${getRecommendation(bill, sectors, cosponsors)}`
+  aiSummary += `**Recommendation:** ${getRecommendation(bill, sectors, cosponsors)}`
   
-  return summary
+  return aiSummary
 }
 
 function getRecommendation(bill: { cosponsors?: { count: number } }, sectors: string[], cosponsors: number): string {

@@ -1,15 +1,51 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
+// Add Bill type based on API response
+interface Bill {
+  id: string;
+  title: string;
+  shortTitle: string;
+  summary: string;
+  fullText: string;
+  aiSummary: string;
+  status: string;
+  introducedDate: string;
+  sponsor: {
+    name: string;
+    party: string;
+    state: string;
+    bioguideId: string;
+  } | null;
+  cosponsors: {
+    count: number;
+    countIncludingWithdrawn: number;
+  };
+  impactLevel: string;
+  sectors: string[];
+  probability: number;
+  url: string;
+  congress: string;
+  type: string;
+  number: string;
+  originChamber: string;
+  latestAction: string;
+  subjects: string[];
+  textVersions: unknown[];
+  relatedBills: unknown[];
+  amendments: unknown[];
+  actions: unknown[];
+}
+
 export default function BillDetailPage() {
-  const router = useRouter();
+  // Removed unused 'router' variable
   const params = useParams();
-  const { congress, type, number } = params;
-  const [bill, setBill] = useState<any>(null);
+  const { congress, type, number } = params as { congress: string; type: string; number: string };
+  const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [translation, setTranslation] = useState<string | null>(null);
@@ -24,9 +60,9 @@ export default function BillDetailPage() {
         const res = await fetch(`/api/bills/${congress}/${type}/${number}`);
         if (!res.ok) throw new Error('Failed to fetch bill details');
         const data = await res.json();
-        setBill(data.bill);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch bill details');
+        setBill(data.bill as Bill);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch bill details');
       } finally {
         setLoading(false);
       }
@@ -48,8 +84,8 @@ export default function BillDetailPage() {
         if (!res.ok) throw new Error('Failed to translate summary');
         const data = await res.json();
         setTranslation(data.translation);
-      } catch (err: any) {
-        setTranslationError(err.message || 'Failed to translate summary');
+      } catch (err: unknown) {
+        setTranslationError(err instanceof Error ? err.message : 'Failed to translate summary');
       } finally {
         setTranslating(false);
       }

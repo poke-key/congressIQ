@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     const translation = data.choices?.[0]?.message?.content || '';
     return NextResponse.json({ translation });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('API route error:', err);
-    return NextResponse.json({ error: err.message || 'Unknown error', details: err }, { status: 500 });
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error', details: err }, { status: 500 });
   }
 } 

@@ -21,7 +21,7 @@ import {
   Loader2
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { SignedIn, SignedOut, UserButton, SignOutButton, SignInButton, SignUpButton } from '@clerk/nextjs';
 
 interface Bill {
@@ -53,7 +53,7 @@ interface SearchResponse {
   }
 }
 
-export default function SearchResults() {
+function SearchResults() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -497,4 +497,12 @@ export default function SearchResults() {
       </div>
     </div>
   )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense>
+      <SearchResults />
+    </Suspense>
+  );
 }
