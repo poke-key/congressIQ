@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useState, useEffect, useCallback } from "react"
+import { SignedIn, SignedOut, UserButton, SignOutButton, SignInButton, SignUpButton } from '@clerk/nextjs';
 
 interface Bill {
   id: string
@@ -169,12 +170,26 @@ export default function SearchResults() {
             </div>
             
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" className="text-amber-950 hover:bg-amber-200/50">
-                Sign In
-              </Button>
-              <Button size="sm" className="ghibli-shadow bg-amber-800 hover:bg-amber-700">
-                Sign Up
-              </Button>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="ghost" size="sm" className="text-amber-950 hover:bg-amber-200/50">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button size="sm" className="ghibli-shadow bg-amber-800 hover:bg-amber-700">
+                    Sign Up
+                  </Button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+                <SignOutButton>
+                  <Button variant="ghost" size="sm" className="text-amber-950 hover:bg-amber-200/50">
+                    Sign Out
+                  </Button>
+                </SignOutButton>
+              </SignedIn>
             </div>
           </nav>
         </div>
