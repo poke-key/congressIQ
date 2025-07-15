@@ -4,6 +4,19 @@ const { Client } = require('@elastic/elasticsearch');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 require('dotenv').config();
 
+const esUrl = process.env.ELASTICSEARCH_URL;
+const esApiKey = process.env.ELASTICSEARCH_API_KEY;
+if (!esUrl || !esApiKey) {
+  throw new Error('Elasticsearch environment variables are not set');
+}
+
+const client = new Client({
+  node: esUrl,
+  auth: {
+    apiKey: esApiKey,
+  },
+});
+
 const CONGRESS_API_KEY = process.env.CONGRESS_API_KEY;
 const CONGRESS_API_BASE_URL = process.env.CONGRESS_API_BASE_URL || 'https://api.congress.gov/v3';
 
@@ -28,11 +41,6 @@ async function fetchBills({ limit = 100, offset = 0, congress } = {}) {
 }
 
 async function main() {
-  const esClient = new Client({
-    node: 'https://localhost:9200',
-    auth: { username: 'elastic', password: 'kunnu138' },
-    tls: { rejectUnauthorized: false },
-  });
   const limit = 100;
   let offset = 0;
   let total = 0;
@@ -51,7 +59,7 @@ async function main() {
         { index: { _index: 'bills', _id: `${bill.type}${bill.number}-${bill.congress}` } },
         bill
       ]);
-      const bulkResponse = await esClient.bulk({ refresh: true, body });
+      const bulkResponse = await client.bulk({ refresh: true, body });
       if (bulkResponse.errors) {
         console.error('Bulk indexing errors:', bulkResponse.errors);
       }
