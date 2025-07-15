@@ -447,8 +447,8 @@ function SearchResults() {
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-amber-700">Affected Sectors:</span>
                           <div className="flex space-x-1">
-                            {(bill.sectors || []).slice(0, 3).map((sector) => (
-                              <Badge key={sector} variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
+                            {(bill.sectors || []).slice(0, 3).map((sector, idx) => (
+                              <Badge key={sector + '-' + idx} variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
                                 {sector}
                               </Badge>
                             ))}
