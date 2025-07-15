@@ -1,6 +1,18 @@
 // src/app/api/bills/search/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { congressApi, getBillStatus, estimateImpactLevel } from '@/lib/congress-api'
+import { Client } from '@elastic/elasticsearch'
+
+const esClient = new Client({
+  node: 'https://localhost:9200',
+  auth: {
+    username: 'elastic',
+    password: 'kunnu138',
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+})
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +28,52 @@ export async function GET(request: NextRequest) {
     console.log('Search request:', { query, limit, offset, congress, chamber, billType, sort })
     console.log('Congress parameter:', congress, 'Type:', typeof congress)
 
-    // Use API pagination only, no client-side filtering
+    // If query is present, use Elasticsearch
+    if (query) {
+      const esResult = await esClient.search({
+        index: 'bills',
+        from: offset,
+        size: limit,
+        query: {
+          multi_match: {
+            query,
+            fields: ['title', 'summary', 'sponsor', 'aiSummary', 'sectors'],
+            fuzziness: 'AUTO',
+          },
+        },
+        sort: sort === 'introducedDate' ? [{ introducedDate: { order: 'desc' } }] : undefined,
+      })
+      // Defensive mapping for summary and aiSummary
+      const bills = esResult.hits.hits.map((hit: any) => {
+        const bill = hit._source;
+        return {
+          ...bill,
+          summary: typeof bill.summary === 'string' ? bill.summary : '',
+          aiSummary: typeof bill.aiSummary === 'string' ? bill.aiSummary : '',
+        };
+      });
+      if (bills.length > 0) {
+        console.log('First bill from ES:', bills[0]);
+        console.log('Type of summary:', typeof bills[0].summary, 'Type of aiSummary:', typeof bills[0].aiSummary);
+      } else {
+        console.log('No bills returned from ES');
+      }
+      // Safely get total hits
+      let totalHits = 0;
+      if (typeof esResult.hits.total === 'number') {
+        totalHits = esResult.hits.total;
+      } else if (esResult.hits.total && typeof esResult.hits.total.value === 'number') {
+        totalHits = esResult.hits.total.value;
+      }
+      return NextResponse.json({
+        bills,
+        pagination: { count: totalHits, limit, offset },
+        query,
+        total: totalHits,
+      })
+    }
+
+    // Fallback: Use API pagination only, no client-side filtering
     const response = await congressApi.searchBills(query, {
       limit,
       offset,

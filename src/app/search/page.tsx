@@ -85,9 +85,9 @@ function SearchResults() {
       
       const data: SearchResponse = await response.json()
       if (append) {
-        setBills(prev => [...prev, ...data.bills]);
+        setBills(prev => [...(prev ?? []), ...(data.bills ?? [])]);
       } else {
-        setBills(data.bills);
+        setBills(data.bills ?? []);
       }
       setTotal(data.total)
     } catch (err) {
@@ -142,6 +142,13 @@ function SearchResults() {
     }
   }
 
+  console.log('Rendering bills:', bills);
+  // Defensive mapping to ensure summary and aiSummary are always strings
+  const safeBills = (bills ?? []).map(bill => ({
+    ...bill,
+    summary: String(bill.summary ?? ''),
+    aiSummary: String(bill.aiSummary ?? ''),
+  }));
   return (
     <div className="min-h-screen constitution-bg">
       {/* Header */}
@@ -344,7 +351,7 @@ function SearchResults() {
             )}
 
             {/* No Results */}
-            {!loading && !error && bills.length === 0 && (
+            {!loading && !error && (safeBills || []).length === 0 && (
               <Card className="ghibli-shadow bg-amber-50/80 border-amber-200/50">
                 <CardContent className="pt-6 text-center">
                   <FileText className="w-12 h-12 mx-auto text-amber-600 mb-4" />
@@ -370,9 +377,9 @@ function SearchResults() {
             )}
 
             {/* Results List */}
-            {!loading && !error && bills.length > 0 && (
+            {!loading && !error && (safeBills ?? []).length > 0 && (
               <div className="space-y-6">
-                {bills.map((bill) => (
+                {(safeBills ?? []).map((bill) => (
                   <Card key={bill.id} className="ghibli-shadow bg-amber-50/80 border-amber-200/50 hover:bg-amber-100/80 transition-all duration-300 cursor-pointer">
                     <CardHeader className="pb-4">
                       <div className="flex justify-between items-start mb-2">
@@ -422,7 +429,7 @@ function SearchResults() {
                           Bill Summary
                         </h4>
                         <p className="text-amber-800 leading-relaxed">
-                          {bill.summary.length > 300 ? `${bill.summary.slice(0, 300)}...` : bill.summary}
+                          {String(bill.summary || '').length > 300 ? `${String(bill.summary || '').slice(0, 300)}...` : String(bill.summary || '')}
                         </p>
                       </div>
                       
@@ -432,7 +439,7 @@ function SearchResults() {
                           AI Business Impact Analysis
                         </h4>
                         <p className="text-amber-800 leading-relaxed">
-                          {bill.aiSummary.length > 200 ? `${bill.aiSummary.slice(0, 200)}...` : bill.aiSummary}
+                          {String(bill.aiSummary || '').length > 200 ? `${String(bill.aiSummary || '').slice(0, 200)}...` : String(bill.aiSummary || '')}
                         </p>
                       </div>
                       
@@ -440,14 +447,14 @@ function SearchResults() {
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-amber-700">Affected Sectors:</span>
                           <div className="flex space-x-1">
-                            {bill.sectors.slice(0, 3).map((sector) => (
+                            {(bill.sectors || []).slice(0, 3).map((sector) => (
                               <Badge key={sector} variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
                                 {sector}
                               </Badge>
                             ))}
-                            {bill.sectors.length > 3 && (
+                            {(bill.sectors || []).length > 3 && (
                               <Badge variant="secondary" className="text-xs bg-amber-200/60 text-amber-800">
-                                +{bill.sectors.length - 3}
+                                +{(bill.sectors || []).length - 3}
                               </Badge>
                             )}
                           </div>
@@ -470,13 +477,13 @@ function SearchResults() {
             )}
 
             {/* Load More */}
-            {!loading && !error && bills.length > 0 && bills.length < total && (
+            {!loading && !error && (safeBills ?? []).length > 0 && (safeBills ?? []).length < total && (
               <div className="text-center mt-8">
                 <Button 
                   className="ghibli-shadow bg-amber-800 hover:bg-amber-700 text-amber-50"
                   disabled={loadingMore}
                   onClick={() => {
-                    const newOffset = offset + bills.length;
+                    const newOffset = offset + (safeBills ?? []).length;
                     setOffset(newOffset);
                     fetchBills(searchQuery, undefined, newOffset, true);
                   }}
