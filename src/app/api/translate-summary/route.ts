@@ -35,4 +35,4 @@ export async function POST(request: NextRequest) {
     console.error('API route error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error', details: err }, { status: 500 });
   }
-} 
+}  
