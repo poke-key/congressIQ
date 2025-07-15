@@ -4,16 +4,17 @@ import { congressApi, getBillStatus, estimateImpactLevel } from '@/lib/congress-
 import { Client } from '@elastic/elasticsearch'
 import type { Bill } from '@/lib/congress-api';
 
+const esUrl = process.env.ELASTICSEARCH_URL;
+const esApiKey = process.env.ELASTICSEARCH_API_KEY;
+if (!esUrl || !esApiKey) {
+  throw new Error('Elasticsearch environment variables are not set');
+}
 const esClient = new Client({
-  node: 'https://localhost:9200',
+  node: esUrl,
   auth: {
-    username: 'elastic',
-    password: 'kunnu138',
+    apiKey: esApiKey,
   },
-  tls: {
-    rejectUnauthorized: false,
-  },
-})
+});
 
 export async function GET(request: NextRequest) {
   try {
