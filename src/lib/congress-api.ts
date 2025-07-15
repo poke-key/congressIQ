@@ -33,6 +33,8 @@ export interface Bill {
     }>
     url: string
     originChamber: string
+    summary?: string
+    aiSummary?: string
   }
   
   export interface CongressApiResponse<T> {
@@ -226,51 +228,3 @@ export interface Bill {
     if (hasHighImpactKeyword || cosponsorsCount > 20) return 'Medium'
     return 'Low'
   }
-
-// Bulk indexing script (run with: node src/lib/congress-api.ts)
-if (require.main === module) {
-  (async () => {
-    const { Client } = require('@elastic/elasticsearch');
-    const esClient = new Client({
-      node: 'https://localhost:9200',
-      auth: { username: 'elastic', password: 'kunnu138' },
-      tls: { rejectUnauthorized: false },
-    });
-    const congressApi = new CongressApiService();
-    const limit = 100; // Fetch 100 bills at a time
-    let offset = 0;
-    let total = 0;
-    let indexed = 0;
-    let done = false;
-    console.log('Starting bulk indexing of bills into Elasticsearch...');
-    while (!done) {
-      try {
-        const response = await congressApi.searchBills('', { limit, offset });
-        const bills = response.bills || [];
-        if (bills.length === 0) {
-          done = true;
-          break;
-        }
-        // Prepare bulk body
-        const body = bills.flatMap(bill => [
-          { index: { _index: 'bills', _id: `${bill.type}${bill.number}-${bill.congress}` } },
-          bill
-        ]);
-        const bulkResponse = await esClient.bulk({ refresh: true, body });
-        if (bulkResponse.errors) {
-          console.error('Bulk indexing errors:', bulkResponse.errors);
-        }
-        indexed += bills.length;
-        total = response.pagination?.count || 0;
-        console.log(`Indexed ${indexed}/${total} bills...`);
-        offset += limit;
-        if (indexed >= total) done = true;
-      } catch (err) {
-        console.error('Error during bulk indexing:', err);
-        break;
-      }
-    }
-    console.log('Bulk indexing complete.');
-    process.exit(0);
-  })();
-}

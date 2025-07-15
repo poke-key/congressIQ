@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { congressApi, getBillStatus, estimateImpactLevel } from '@/lib/congress-api'
 import { Client } from '@elastic/elasticsearch'
+import type { Bill } from '@/lib/congress-api';
 
 const esClient = new Client({
   node: 'https://localhost:9200',
@@ -44,12 +45,12 @@ export async function GET(request: NextRequest) {
         sort: sort === 'introducedDate' ? [{ introducedDate: { order: 'desc' } }] : undefined,
       })
       // Defensive mapping for summary and aiSummary
-      const bills = esResult.hits.hits.map((hit: any) => {
-        const bill = hit._source;
+      const bills = esResult.hits.hits.map((hit) => {
+        const bill = hit._source as Bill | undefined;
         return {
-          ...bill,
-          summary: typeof bill.summary === 'string' ? bill.summary : '',
-          aiSummary: typeof bill.aiSummary === 'string' ? bill.aiSummary : '',
+          ...(bill || {}),
+          summary: typeof bill?.summary === 'string' ? bill?.summary : '',
+          aiSummary: typeof bill?.aiSummary === 'string' ? bill?.aiSummary : '',
         };
       });
       if (bills.length > 0) {
@@ -92,8 +93,8 @@ export async function GET(request: NextRequest) {
         id: `${bill.type}${bill.number}-${bill.congress}`,
         title: bill.title,
         shortTitle: `${bill.type.toUpperCase()}. ${bill.number}`,
-        summary: bill.title, // We'll get better summaries from bill text later
-        aiSummary: generatePlaceholderAISummary(bill), // Placeholder until we add LLM
+        summary: typeof bill?.summary === 'string' ? bill?.summary : '',
+        aiSummary: typeof bill?.aiSummary === 'string' ? bill?.aiSummary : '',
         status,
         introducedDate: bill.introducedDate,
         sponsor: sponsor ? `${sponsor.fullName} (${sponsor.party}-${sponsor.state})` : 'Unknown',
@@ -179,34 +180,4 @@ function estimatePassageProbability(bill: { cosponsors?: { count: number }, orig
   if (bill.originChamber === 'Senate' && cosponsors > 51) baseProb += 15
 
   return Math.min(95, Math.max(5, baseProb))
-}
-
-// Placeholder AI summary generator (we'll replace this with real LLM later)
-function generatePlaceholderAISummary(bill: { subjects?: { legislativeSubjects?: Array<{ name: string }> }, title: string, cosponsors?: { count: number } }): string {
-  const sectors = extractSectors(bill)
-  const cosponsors = bill.cosponsors?.count || 0
-  
-  let summary = `This bill could impact ${sectors.join(', ')} sectors. `
-  
-  if (cosponsors > 50) {
-    summary += `With ${cosponsors} cosponsors, it has strong bipartisan support and higher chances of passage. `
-  } else if (cosponsors > 20) {
-    summary += `With ${cosponsors} cosponsors, it has moderate support. `
-  } else {
-    summary += `With ${cosponsors} cosponsors, it currently has limited support. `
-  }
-  
-  if (sectors.includes('Healthcare')) {
-    summary += 'Healthcare providers and insurance companies should monitor compliance requirements. '
-  }
-  if (sectors.includes('Technology')) {
-    summary += 'Tech companies may face new regulations or benefit from innovation incentives. '
-  }
-  if (sectors.includes('Energy')) {
-    summary += 'Energy companies should assess potential costs and opportunities. '
-  }
-  
-  summary += 'Full AI analysis will be available once the bill text is processed.'
-  
-  return summary
 }
