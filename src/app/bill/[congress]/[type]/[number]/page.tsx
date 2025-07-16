@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 // Add Bill type based on API response
 interface Bill {
@@ -71,7 +72,7 @@ export default function BillDetailPage() {
   }, [congress, type, number]);
 
   useEffect(() => {
-    async function fetchTranslation(summary: string) {
+    async function fetchTranslation(summary: string, fullText: string, title: string, sponsor: string, actions: string[]) {
       setTranslating(true);
       setTranslationError(null);
       setTranslation(null);
@@ -79,7 +80,7 @@ export default function BillDetailPage() {
         const res = await fetch('/api/translate-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ summary })
+          body: JSON.stringify({ summary, fullText, title, sponsor, actions })
         });
         if (!res.ok) throw new Error('Failed to translate summary');
         const data = await res.json();
@@ -91,7 +92,13 @@ export default function BillDetailPage() {
       }
     }
     if (bill && bill.summary) {
-      fetchTranslation(bill.summary);
+      fetchTranslation(
+        bill.summary,
+        bill.fullText || '',
+        bill.title || '',
+        bill.sponsor?.name || '',
+        (bill.actions as string[]) || []
+      );
     }
   }, [bill]);
 
@@ -130,7 +137,9 @@ export default function BillDetailPage() {
             ) : translationError ? (
               <div className="text-red-700 italic">{translationError}</div>
             ) : translation ? (
-              <p className="text-amber-700 leading-relaxed italic">{translation}</p>
+              <div className="text-amber-700 leading-relaxed italic">
+                <ReactMarkdown>{translation}</ReactMarkdown>
+              </div>
             ) : (
               <p className="text-amber-700 italic">No translation available.</p>
             )}
