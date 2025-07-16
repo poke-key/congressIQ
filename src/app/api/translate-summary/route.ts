@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing summary or fullText' }, { status: 400 });
     }
     // Prefer summary, fallback to fullText if summary is missing
-    let contextText = summary && summary.length > 30 ? summary : (fullText || '');
+    const contextText = summary && summary.length > 30 ? summary : (fullText || '');
     // Build context prompt
-    let contextParts = [];
+    const contextParts = [];
     if (title) contextParts.push(`Title: ${title}`);
     if (sponsor) contextParts.push(`Sponsor: ${sponsor}`);
     if (actions && Array.isArray(actions) && actions.length > 0) {
