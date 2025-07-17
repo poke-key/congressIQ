@@ -4,7 +4,7 @@ async function callLLM(prompt: string, max_tokens = 1024) {
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': 'Bearer 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',
+      'Authorization': 'Bearer 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',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
