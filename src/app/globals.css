@@ -46,7 +46,7 @@
   background-size: 300px 300px, 400px 400px, 200px 200px;
   animation: float 20s ease-in-out infinite;
   pointer-events: none;
-}
+} 
 
 .constitution-bg::after {
   content: '';
