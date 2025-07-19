@@ -128,7 +128,10 @@ export default function BillDetailPage() {
         <CardContent>
           <div className="mb-6">
             <h3 className="font-semibold text-amber-900 mb-2">Official Summary</h3>
-            <p className="text-amber-800 leading-relaxed">{bill.summary}</p>
+            <div
+              className="text-amber-800 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: bill.summary }}
+            />
           </div>
           <div className="mb-6">
             <h3 className="font-semibold text-amber-900 mb-2">Plain English Legal Translation</h3>
