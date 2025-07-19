@@ -44,26 +44,54 @@ export async function GET(
 
     // Process bill text
     let fullText = ''
+    console.log(`🔍 [DEBUG] Processing bill text response...`)
     if (textResponse.status === 'fulfilled' && textResponse.value?.textVersions) {
       const textVersions = textResponse.value.textVersions
+      console.log(`📋 [DEBUG] Found ${textVersions.length} text versions`)
+      
       // Get the most recent text version
       const latestText = textVersions
         .sort((a: { date: string }, b: { date: string }) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
       
+      console.log(`📄 [DEBUG] Latest text version:`, latestText)
+      
       if (latestText?.formats) {
-        // Try to get text format, fallback to XML or PDF
-        const textFormat = latestText.formats.find((f: { type: string }) => f.type === 'Formatted Text') || 
-                          latestText.formats.find((f: { type: string }) => f.type === 'Formatted XML') ||
+        console.log(`📎 [DEBUG] Found ${latestText.formats.length} formats in latest version`)
+        
+        // Try to get XML format first (more commonly available), then fallback to Formatted Text or PDF
+        const textFormat = latestText.formats.find((f: { type: string }) => f.type === 'Formatted XML') || 
+                          latestText.formats.find((f: { type: string }) => f.type === 'Formatted Text') ||
                           latestText.formats[0]
         
+        console.log(`🎯 [DEBUG] Selected format:`, textFormat)
+        
         if (textFormat?.url) {
+          console.log(`🔗 [DEBUG] Fetching text from URL: ${textFormat.url}`)
+          if (textFormat.url.includes('.xml')) {
+            console.log(`✅ [DEBUG] CONFIRMED: Using .XML URL for bill text: ${textFormat.url}`)
+          } else if (textFormat.url.includes('.htm')) {
+            console.log(`✅ [DEBUG] CONFIRMED: Using .HTM URL for bill text: ${textFormat.url}`)
+          } else if (textFormat.url.includes('.pdf')) {
+            console.log(`✅ [DEBUG] CONFIRMED: Using .PDF URL for bill text: ${textFormat.url}`)
+          }
+          
           try {
             const textContent = await fetch(textFormat.url)
             fullText = await textContent.text()
+            console.log(`📝 [DEBUG] Successfully fetched ${fullText.length} characters of bill text`)
           } catch (error) {
             console.warn('Failed to fetch bill text:', error)
           }
+        } else {
+          console.log(`❌ [DEBUG] No URL found in selected format`)
         }
+      } else {
+        console.log(`❌ [DEBUG] No formats found in latest text version`)
+      }
+    } else {
+      console.log(`❌ [DEBUG] Text response not fulfilled or no textVersions found`)
+      if (textResponse.status === 'rejected') {
+        console.log(`❌ [DEBUG] Text response rejected:`, textResponse.reason)
       }
     }
 

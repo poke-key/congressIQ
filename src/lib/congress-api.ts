@@ -124,17 +124,46 @@ export interface Bill {
     }
   
     async getBill(congress: number, billType: string, billNumber: string): Promise<CongressApiResponse<Bill>> {
-      const endpoint = `/bill/${congress}/${billType}/${billNumber}`
+      // Convert billType to lowercase for API compatibility
+      const normalizedBillType = billType.toLowerCase()
+      const endpoint = `/bill/${congress}/${normalizedBillType}/${billNumber}`
       return this.makeRequest<CongressApiResponse<Bill>>(endpoint)
     }
   
-        async getBillText(congress: number, billType: string, billNumber: string): Promise<{ textVersions?: Array<{ date: string, formats: Array<{ type: string, url: string }> }> }> {
-      const endpoint = `/bill/${congress}/${billType}/${billNumber}/text`
-      return this.makeRequest(endpoint)
+        async getBillText(congress: number, billType: string, billNumber: string): Promise<{ textVersions?: Array<{ type: string, date: string, formats: Array<{ type: string, url: string }> }> }> {
+      // Convert billType to lowercase for API compatibility
+      const normalizedBillType = billType.toLowerCase()
+      const endpoint = `/bill/${congress}/${normalizedBillType}/${billNumber}/text`
+      console.log(`🔍 [DEBUG] Calling getBillText for: ${congress}/${billType}/${billNumber} (normalized to: ${normalizedBillType})`)
+      const response = await this.makeRequest<{ textVersions?: Array<{ type: string, date: string, formats: Array<{ type: string, url: string }> }> }>(endpoint)
+      console.log(`📄 [DEBUG] getBillText response:`, JSON.stringify(response, null, 2))
+      
+      // Check for .htm URLs specifically
+      if (response.textVersions) {
+        response.textVersions.forEach((version: { type: string, date: string, formats: Array<{ type: string, url: string }> }, index: number) => {
+          console.log(`📋 [DEBUG] Text version ${index + 1}:`, version.type, version.date)
+          if (version.formats) {
+            version.formats.forEach((format: { type: string, url: string }, formatIndex: number) => {
+              console.log(`   📎 [DEBUG] Format ${formatIndex + 1}: ${format.type} - ${format.url}`)
+              if (format.url && format.url.includes('.xml')) {
+                console.log(`   ✅ [DEBUG] FOUND .XML URL: ${format.url}`)
+              } else if (format.url && format.url.includes('.htm')) {
+                console.log(`   ✅ [DEBUG] FOUND .HTM URL: ${format.url}`)
+              } else if (format.url && format.url.includes('.pdf')) {
+                console.log(`   ✅ [DEBUG] FOUND .PDF URL: ${format.url}`)
+              }
+            })
+          }
+        })
+      }
+      
+      return response
     }
 
     async getBillSummary(congress: number, billType: string, billNumber: string): Promise<{ summaries?: Array<{ updateDate: string, text: string }> }> {
-      const endpoint = `/bill/${congress}/${billType}/${billNumber}/summaries`
+      // Convert billType to lowercase for API compatibility
+      const normalizedBillType = billType.toLowerCase()
+      const endpoint = `/bill/${congress}/${normalizedBillType}/${billNumber}/summaries`
       return this.makeRequest(endpoint)
     }
   
